@@ -15,20 +15,21 @@ class NaiveBarrier extends Barrier {
 
     @Override
     public void sync(int no) throws InterruptedException {
-
         if (!active) return;
-        
-        arrived++;
-            
+        //arrived++; //1. Not an atomic action because it is not inside the synchronized(this) statement
+        //Thread.sleep(5000); //2. When off() is clicked before the sleep is done the
+                                 // cars never reach a state where arrived > 8.
+        //if(no == 5) Thread.sleep(100);   // Car 5 will wait because it arrives
+                                               // at the barrier after everyone went ahead of him.
         synchronized(this) {
-                
-            if (arrived < 9) { 
+            arrived++;          //5. Now it's cleaaaan.
+            System.out.println("arrived = "+ arrived + " no = " + no);
+            if (arrived < 9) {//arrived might not reach 9 because of arrived++
                 wait();
             } else {
                 arrived = 0;
                 notifyAll();
             }
-
         }
     }
 
@@ -38,7 +39,7 @@ class NaiveBarrier extends Barrier {
     }
 
     @Override
-    public void off() {
+    public void off()  {
         active = false;
         arrived = 0;
         synchronized(this) {
@@ -46,11 +47,12 @@ class NaiveBarrier extends Barrier {
         }
     }
 
-/*
+
     @Override
     // May be (ab)used for robustness testing
-    public void set(int k) { 
-    }    
-*/    
-
+    public void set(int k) { //4.
+        synchronized (this){
+            notify();
+        }
+    }
 }

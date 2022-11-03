@@ -24,7 +24,7 @@ public abstract class Barrier {
         cd.println("Barrier On not implemented in this version");
     };
     
-    public void off() { 
+    public void off()  {
         cd.println("Barrier Off not implemented in this version");
     };
     
