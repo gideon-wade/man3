@@ -24,7 +24,7 @@ class NaiveBarrier extends Barrier {
         synchronized(this) {
             arrived++;          //5. Now it's cleaaaan.
             System.out.println("arrived = "+ arrived + " no = " + no);
-            if (arrived < 9) {//arrived might not reach 9 because of arrived++
+            if (arrived < 9) {//arrived might not reach 9 because of arrived++ in 1.
                 wait();
             } else {
                 arrived = 0;
