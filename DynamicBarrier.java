@@ -43,16 +43,23 @@ class DynamicBarrier extends Barrier {
 
     @Override
     /* Set barrier threshold */
-    public void set(int k) {
-        if(k <= currentThreshold) {
-            currentThreshold = k;
-            return;
-        }
-        if(k <= arrived) {
-            arrived = 0;
-            notifyAll();
+    public synchronized void set(int k) {
+        if(arrived <= 1) {
+            if(k <= currentThreshold) {
+                currentThreshold = k;
+                return;
+            }
+            if(k <= arrived) {
+                arrived = 0;
+                notifyAll();
+            }
+        } else {
+            try {
+                wait();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
         }
         currentThreshold = k;
     }
-
 }
