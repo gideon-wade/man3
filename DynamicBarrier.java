@@ -8,6 +8,7 @@ class DynamicBarrier extends Barrier {
     private int currentThreshold = 9;
     int arrived = 0;
     boolean active = false;
+    boolean released = false;
     
     public DynamicBarrier(CarDisplayI cd) {
         super(cd);
@@ -16,13 +17,16 @@ class DynamicBarrier extends Barrier {
     @Override
     public void sync(int no) throws InterruptedException {
         if (!active) return;
-        arrived++;
         synchronized(this) {
+            released = false;
+            arrived++;
             if (arrived < currentThreshold) {
+                System.out.println("I'm waiting because threshold is " + currentThreshold + "and i arrived as number " + arrived);
                 wait();
             } else {
                 arrived = 0;
                 notifyAll();
+                released = true;
             }
         }
     }
@@ -39,20 +43,24 @@ class DynamicBarrier extends Barrier {
         synchronized(this) {
             notifyAll();
         }
+        released = true;
     }
 
     @Override
     /* Set barrier threshold */
     public void set(int k) {
-        if(k <= currentThreshold) {
-            currentThreshold = k;
-            return;
-        }
-        if(k <= arrived) {
-            arrived = 0;
-            notifyAll();
+        if(k<1 || k>9) return;
+        if(k <= currentThreshold && active) {
+            if(arrived >= k){
+                synchronized (this) {
+                    notifyAll();
+                }
+                arrived = 0;
+            }
+        }else if(active){
+            //while(!released);
+            while(!released) System.out.print("");
         }
         currentThreshold = k;
     }
-
 }
