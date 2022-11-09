@@ -21,7 +21,6 @@ class DynamicBarrier extends Barrier {
             released = false;
             arrived++;
             if (arrived < currentThreshold) {
-                System.out.println("I'm waiting because threshold is " + currentThreshold + "and i arrived as number " + arrived);
                 wait();
             } else {
                 arrived = 0;
@@ -49,7 +48,7 @@ class DynamicBarrier extends Barrier {
     @Override
     /* Set barrier threshold */
     public void set(int k) {
-        if(k<1 || k>9) return;
+        if(k < 1 || k > 9) return;
         if(k <= currentThreshold && active) {
             if(arrived >= k){
                 synchronized (this) {
@@ -59,7 +58,16 @@ class DynamicBarrier extends Barrier {
             }
         }else if(active){
             //while(!released);
-            while(!released) System.out.print("");
+            if(!released){
+                try {
+                    synchronized (this) {
+                        wait();
+                    }
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+            //while(!released) System.out.print("");
         }
         currentThreshold = k;
     }
