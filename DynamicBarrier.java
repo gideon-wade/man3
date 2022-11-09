@@ -8,7 +8,8 @@ class DynamicBarrier extends Barrier {
     private int currentThreshold = 9;
     int arrived = 0;
     boolean active = false;
-    
+    boolean released = false;
+
     public DynamicBarrier(CarDisplayI cd) {
         super(cd);
     }
@@ -16,13 +17,15 @@ class DynamicBarrier extends Barrier {
     @Override
     public void sync(int no) throws InterruptedException {
         if (!active) return;
-        arrived++;
         synchronized(this) {
+            released = false;
+            arrived++;
             if (arrived < currentThreshold) {
                 wait();
             } else {
                 arrived = 0;
                 notifyAll();
+                released = true;
             }
         }
     }
@@ -38,27 +41,33 @@ class DynamicBarrier extends Barrier {
         arrived = 0;
         synchronized(this) {
             notifyAll();
+            released = true;
         }
     }
 
     @Override
     /* Set barrier threshold */
-    public synchronized void set(int k) {
-        if(arrived <= 1) {
-            if(k <= currentThreshold) {
-                currentThreshold = k;
-                return;
-            }
-            if(k <= arrived) {
+    public void set(int k) {
+        if(k < 1 || k > 9) return;
+        if(k <= currentThreshold && active) {
+            if(arrived >= k){
+                synchronized (this) {
+                    notifyAll();
+                }
                 arrived = 0;
-                notifyAll();
             }
-        } else {
-            try {
-                wait();
-            } catch (InterruptedException e) {
-                e.printStackTrace();
+        }else if(active){
+            //while(!released);
+            if(!released){
+                try {
+                    synchronized (this) {
+                        wait();
+                    }
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
             }
+            //while(!released) System.out.print("");
         }
         currentThreshold = k;
     }

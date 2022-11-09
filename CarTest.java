@@ -33,7 +33,7 @@ public class CarTest extends Thread {
                 for (int i = 1; i < 9; i++) {
                     cars.setSpeed(i,20.0);
                     cars.setVariation(i,20);
-                };
+                }
                 break;
 
             default:

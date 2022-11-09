@@ -27,6 +27,8 @@ class Conductor extends Thread {
     Pos curpos;                      // Current position 
     Pos newpos;                      // New position to go to
 
+    CarI car;                        // Makes the car accessible for the whole class
+
     public Conductor(int no, CarDisplayI cd, Gate g, Field field, Alley alley, Barrier barrier) {
 
         this.no = no;
@@ -92,18 +94,20 @@ class Conductor extends Thread {
 
     public void run() {
         try {
-            CarI car = cd.newCar(no, col, startpos);
+            car = cd.newCar(no, col, startpos);
             curpos = startpos;
             field.enter(no, curpos);
             cd.register(car);
 
-            while (true) { 
+            while (true) {
 
                 if (atGate(curpos)) { 
                     mygate.pass(); 
                     car.setSpeed(chooseSpeed());
                 }
-
+                if(nextPos(curpos) == curpos) {
+                    cd.println("Hvad så scooby doo");
+                }
                 newpos = nextPos(curpos);
 
                 if (atBarrier(curpos)) barrier.sync(no);
@@ -120,12 +124,50 @@ class Conductor extends Thread {
             }
 
         } catch (Exception e) {
-            cd.println("Exception in Conductor no. " + no);
-            System.err.println("Exception in Conductor no. " + no + ":" + e);
-            e.printStackTrace();
+            shutDownThread();
+            cd.println("Scooby doo og hans scooby kiks");
         }
     }
 
+    public synchronized void shutDownThread(){
+        cd.deregister(car);
+        cd.println("row: " + curpos.row + " col: " + curpos.col);
+        field.leave(curpos);
+
+        if (insideAlley()) {
+            alley.leave(no);
+            field.leave(newpos);
+            cd.println("Ching chong");
+            return;
+        }
+        if(atEntry(curpos)
+                || field.tileMutex[newpos.row][newpos.col].toString().equals("0") && curpos.row == 10 && curpos.col < 5) {
+            cd.println("AUUUGH");
+            cd.println(field.tileMutex[newpos.row][newpos.col].toString());
+            String s = "";
+            for (int i = 0; i < 11; i++) {
+                for (int j = 0; j < 12; j++) {
+                    s += field.tileMutex[i][j].toString() + " ";
+                }
+                s += "\n";
+            }
+            System.out.println(s);
+            return;
+        }
+        field.leave(newpos);
+        String s = "";
+        for (int i = 0; i < 11; i++) {
+            for (int j = 0; j < 12; j++) {
+                s += field.tileMutex[i][j].toString() +  " ";
+            }
+            s += "\n";
+        }
+        System.out.println(s);
+
+    }
+    public boolean insideAlley() {
+        return (curpos.col == 0 && curpos.row < 10 && curpos.row > 1); // bounds for alley
+    }
 }
 
 public class CarControl implements CarControlI{
@@ -173,12 +215,21 @@ public class CarControl implements CarControlI{
         barrier.set(k);
    }
     
-    public void removeCar(int no) { 
-        cd.println("Remove Car not implemented in this version");
+    public synchronized void removeCar(int no) {
+        //cd.println("Remove Car not implemented in this version");
+        //conductor[no].shutDownThread();
+        conductor[no].interrupt();
     }
 
-    public void restoreCar(int no) { 
-        cd.println("Restore Car not implemented in this version");
+    public void restoreCar(int no) {
+        if(!conductor[no].isAlive()) {
+            conductor[no] = new Conductor(no,cd,gate[no],field,alley,barrier);
+            conductor[no].setName("Conductor-" + no);
+            conductor[no].start();
+        }
+        //startCar(no);
+        //cd.println("Restore Car not implemented in this version");
+
     }
 
     /* Speed settings for testing purposes */
