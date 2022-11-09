@@ -13,7 +13,7 @@ class Conductor extends Thread {
     double variation =  40;          // Percentage of base speed
 
     CarDisplayI cd;                  // GUI part
-    
+
     Field field;                     // Field control
     Alley alley;                     // Alley control    
     Barrier barrier;                 // Barrier control    
@@ -26,8 +26,6 @@ class Conductor extends Thread {
 
     Pos curpos;                      // Current position 
     Pos newpos;                      // New position to go to
-
-    CarI car;                        // Makes the car accessible for the whole class
 
     public Conductor(int no, CarDisplayI cd, Gate g, Field field, Alley alley, Barrier barrier) {
 
@@ -44,16 +42,16 @@ class Conductor extends Thread {
 
         // special settings for car no. 0
         if (no==0) {
-            basespeed = -1.0;  
-            variation = 0; 
+            basespeed = -1.0;
+            variation = 0;
         }
     }
 
-    public synchronized void setSpeed(double speed) { 
+    public synchronized void setSpeed(double speed) {
         basespeed = speed;
     }
 
-    public synchronized void setVariation(int var) { 
+    public synchronized void setVariation(int var) {
         if (no != 0 && 0 <= var && var <= 100) {
             variation = var;
         }
@@ -61,13 +59,13 @@ class Conductor extends Thread {
             cd.println("Illegal variation settings");
     }
 
-    synchronized double chooseSpeed() { 
+    synchronized double chooseSpeed() {
         double factor = (1.0D+(Math.random()-0.5D)*2*variation/100);
         return factor*basespeed;
     }
 
-    Color chooseColor() { 
-        return Color.blue; // You can get any color, as longs as it's blue 
+    Color chooseColor() {
+        return Color.blue; // You can get any color, as longs as it's blue
     }
 
     Pos nextPos(Pos pos) {
@@ -80,93 +78,63 @@ class Conductor extends Thread {
     }
 
     boolean atEntry(Pos pos) {
-        return (pos.row ==  1 && pos.col ==  1) || (pos.row ==  2 && pos.col ==  1) || 
-               (pos.row == 10 && pos.col ==  0);
+        return (pos.row ==  1 && pos.col ==  1) || (pos.row ==  2 && pos.col ==  1) ||
+                (pos.row == 10 && pos.col ==  0);
     }
 
     boolean atExit(Pos pos) {
         return (pos.row ==  0 && pos.col ==  0) || (pos.row ==  9 && pos.col ==  1);
     }
-    
+
     boolean atBarrier(Pos pos) {
         return pos.equals(barpos);
     }
 
     public void run() {
+        CarI car = cd.newCar(no, col, startpos);
+        boolean inAlley = false;
+        boolean tookSem = false;
         try {
-            car = cd.newCar(no, col, startpos);
             curpos = startpos;
             field.enter(no, curpos);
             cd.register(car);
 
             while (true) {
-
-                if (atGate(curpos)) { 
-                    mygate.pass(); 
+                if (atGate(curpos)) {
+                    mygate.pass();
                     car.setSpeed(chooseSpeed());
                 }
-                if(nextPos(curpos) == curpos) {
-                    cd.println("Hvad så scooby doo");
-                }
+
                 newpos = nextPos(curpos);
 
                 if (atBarrier(curpos)) barrier.sync(no);
-                
-                if (atEntry(curpos)) alley.enter(no);
+
+                if (atEntry(curpos)){ alley.enter(no); inAlley = true; }
                 field.enter(no, newpos);
+                tookSem = true;
 
                 car.driveTo(newpos);
 
                 field.leave(curpos);
-                if (atExit(newpos)) alley.leave(no);
+                if (atExit(newpos)) { alley.leave(no); inAlley = false; }
 
                 curpos = newpos;
+                tookSem = false;
             }
-
         } catch (Exception e) {
-            shutDownThread();
-            cd.println("Scooby doo og hans scooby kiks");
-        }
-    }
-
-    public synchronized void shutDownThread(){
-        cd.deregister(car);
-        cd.println("row: " + curpos.row + " col: " + curpos.col);
-        field.leave(curpos);
-
-        if (insideAlley()) {
-            alley.leave(no);
-            field.leave(newpos);
-            cd.println("Ching chong");
-            return;
-        }
-        if(atEntry(curpos)
-                || field.tileMutex[newpos.row][newpos.col].toString().equals("0") && curpos.row == 10 && curpos.col < 5) {
-            cd.println("AUUUGH");
-            cd.println(field.tileMutex[newpos.row][newpos.col].toString());
-            String s = "";
-            for (int i = 0; i < 11; i++) {
-                for (int j = 0; j < 12; j++) {
-                    s += field.tileMutex[i][j].toString() + " ";
+            synchronized (this){
+                cd.deregister(car);
+                field.leave(curpos);
+                if(inAlley){
+                    alley.leave(no);
                 }
-                s += "\n";
-            }
-            System.out.println(s);
-            return;
-        }
-        field.leave(newpos);
-        String s = "";
-        for (int i = 0; i < 11; i++) {
-            for (int j = 0; j < 12; j++) {
-                s += field.tileMutex[i][j].toString() +  " ";
-            }
-            s += "\n";
-        }
-        System.out.println(s);
 
-    }
-    public boolean insideAlley() {
-        return (curpos.col == 0 && curpos.row < 10 && curpos.row > 1); // bounds for alley
+                if(tookSem){
+                    field.leave(newpos);
+                    System.out.println("Left field: " + newpos.toString());
+                }
+            }
+        }
     }
 }
 
@@ -192,7 +160,7 @@ public class CarControl implements CarControlI{
             conductor[no] = new Conductor(no,cd,gate[no],field,alley,barrier);
             conductor[no].setName("Conductor-" + no);
             conductor[no].start();
-        } 
+        }
     }
 
     public void startCar(int no) {
@@ -203,42 +171,51 @@ public class CarControl implements CarControlI{
         gate[no].close();
     }
 
-    public void barrierOn() { 
-        barrier.on();
-    }
+    public void barrierOn() { barrier.on(); }
 
     public void barrierOff() {
         barrier.off();
     }
 
-   public void barrierSet(int k) {
+    public void barrierSet(int k) {
         barrier.set(k);
-   }
-    
-    public synchronized void removeCar(int no) {
-        //cd.println("Remove Car not implemented in this version");
-        //conductor[no].shutDownThread();
-        conductor[no].interrupt();
+    }
+
+    public void removeCar(int no) {
+        if(conductor[no].isAlive()) {
+            conductor[no].interrupt();
+
+            /*
+            boolean inQueue = false;
+            for(int i = 0; i < 9; i++){
+                if(i == no) continue;
+                if(conductor[no].newpos == conductor[i].curpos) inQueue = true;
+            }
+            //System.out.println("Cur " + conductor[no].curpos + " New " + conductor[no].newpos + " Queue " + inQueue);
+            if(!inQueue && field.tileMutex[conductor[no].newpos.row][conductor[no].newpos.col].toString().equals("0")){
+                field.leave(conductor[no].newpos);
+                System.out.println("Left field: " + conductor[no].newpos.toString());
+            }
+
+             */
+        }
     }
 
     public void restoreCar(int no) {
         if(!conductor[no].isAlive()) {
-            conductor[no] = new Conductor(no,cd,gate[no],field,alley,barrier);
+            conductor[no] = new Conductor(no, cd, gate[no], field, alley, barrier);
             conductor[no].setName("Conductor-" + no);
             conductor[no].start();
         }
-        //startCar(no);
-        //cd.println("Restore Car not implemented in this version");
-
     }
 
     /* Speed settings for testing purposes */
 
-    public void setSpeed(int no, double speed) { 
+    public void setSpeed(int no, double speed) {
         conductor[no].setSpeed(speed);
     }
 
-    public void setVariation(int no, int var) { 
+    public void setVariation(int no, int var) {
         conductor[no].setVariation(var);
     }
 
