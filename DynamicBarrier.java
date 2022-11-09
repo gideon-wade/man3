@@ -9,7 +9,7 @@ class DynamicBarrier extends Barrier {
     int arrived = 0;
     boolean active = false;
     boolean released = false;
-    
+
     public DynamicBarrier(CarDisplayI cd) {
         super(cd);
     }
@@ -42,8 +42,8 @@ class DynamicBarrier extends Barrier {
         arrived = 0;
         synchronized(this) {
             notifyAll();
+            released = true;
         }
-        released = true;
     }
 
     @Override

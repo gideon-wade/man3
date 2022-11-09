@@ -16,13 +16,11 @@ class NaiveBarrier extends Barrier {
     @Override
     public void sync(int no) throws InterruptedException {
         if (!active) return;
-        //arrived++; //1. Not an atomic action because it is not inside the synchronized(this) statement
-        //Thread.sleep(5000); //2. When off() is clicked before the sleep is done the
-                                 // cars never reach a state where arrived > 8.
-        //if(no == 5) Thread.sleep(100);   // Car 5 will wait because it arrives
-                                               // at the barrier after everyone went ahead of him.
+        arrived++;
+        //Thread.sleep(5000);
+        //if(no == 5) Thread.sleep(100);
         synchronized(this) {
-            arrived++;          //5. Now it's cleaaaan.
+            //arrived++;
             System.out.println("arrived = "+ arrived + " no = " + no);
             if (arrived < 9) {//arrived might not reach 9 because of arrived++ in 1.
                 wait();
