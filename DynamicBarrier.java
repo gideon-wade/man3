@@ -9,25 +9,30 @@ class DynamicBarrier extends Barrier {
     int arrived = 0;
     boolean active = false;
     boolean released = false;
+    boolean mayAdvance[] = { false,false,false,false,false,false,false,false,false };
+    boolean hasArrived[] = { false,false,false,false,false,false,false,false,false };
 
     public DynamicBarrier(CarDisplayI cd) {
         super(cd);
     }
 
     @Override
-    public void sync(int no) throws InterruptedException {
+    public synchronized void sync(int no) throws InterruptedException {
         if (!active) return;
-        synchronized(this) {
-            released = false;
-            arrived++;
-            if (arrived < currentThreshold) {
-                wait();
-            } else {
-                arrived = 0;
-                notifyAll();
-                released = true;
-            }
+        released = false;
+        arrived++;
+        hasArrived[no] = true;
+        if(arrived >= currentThreshold) {
+            for(int i = 0; i < 9; i++) { mayAdvance[i] = hasArrived[i]; };
+            notifyAll();
+            arrived = 0;
         }
+        while (!mayAdvance[no]) {
+            wait();
+        }
+        hasArrived[no] = false;
+        mayAdvance[no] = false;
+        released = true;
     }
 
     @Override
@@ -36,38 +41,30 @@ class DynamicBarrier extends Barrier {
     }
 
     @Override
-    public void off() {
+    public synchronized void off() {
         active = false;
         arrived = 0;
-        synchronized(this) {
-            notifyAll();
-            released = true;
-        }
+        notifyAll();
+        released = true;
     }
 
     @Override
     /* Set barrier threshold */
-    public void set(int k) {
+    public synchronized void set(int k) {
         if(k < 1 || k > 9) return;
         if(k <= currentThreshold && active) {
             if(arrived >= k){
-                synchronized (this) {
-                    notifyAll();
-                }
+                notifyAll();
                 arrived = 0;
             }
         }else if(active){
-            //while(!released);
             if(!released){
                 try {
-                    synchronized (this) {
-                        wait();
-                    }
+                    wait();
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
             }
-            //while(!released) System.out.print("");
         }
         currentThreshold = k;
     }

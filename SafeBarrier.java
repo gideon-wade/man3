@@ -8,7 +8,8 @@ class SafeBarrier extends Barrier {
 
     int arrived = 0;
     boolean active = false;
-    boolean allAdvanced = false; // Everyone has passed.
+    //boolean allAdvanced = false; // Everyone has passed.
+    boolean mayAdvance[] = { false,false,false,false,false,false,false,false,false };
 
 
     public SafeBarrier(CarDisplayI cd) {
@@ -16,21 +17,15 @@ class SafeBarrier extends Barrier {
     }
 
     @Override
-    public void sync(int no) throws InterruptedException {
+    public synchronized void sync(int no) throws InterruptedException {
         if (!active) return;
-        synchronized(this) {
-            arrived++;
-            while (arrived < 9) {
-                wait();
-                if(allAdvanced) break;
-            }
-            allAdvanced = true;
-            arrived--;
-            if(arrived == 0) {
-                allAdvanced = false;
-            }
-            notifyAll();
+        arrived++;
+        if(arrived>8) { for(int i = 0; i < 9; i++) { mayAdvance[i] = true; }; notifyAll(); }
+        while (!mayAdvance[no]) {
+            wait();
         }
+        arrived--;
+        mayAdvance[no] = false;
     }
 
     @Override
@@ -39,12 +34,10 @@ class SafeBarrier extends Barrier {
     }
 
     @Override
-    public void off()  {
+    public synchronized void off()  {
         active = false;
         arrived = 0;
-        synchronized(this) {
-            notifyAll();
-        }
+        notifyAll();
     }
 
 
