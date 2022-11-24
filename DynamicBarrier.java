@@ -4,13 +4,15 @@
 
 //Hans Henrik Lovengreen     Oct 25, 2022
 
+import java.util.Arrays;
+
 class DynamicBarrier extends Barrier {
     private int currentThreshold = 9;
     int arrived = 0;
     boolean active = false;
     boolean released = false;
-    boolean mayAdvance[] = { false,false,false,false,false,false,false,false,false };
-    boolean hasArrived[] = { false,false,false,false,false,false,false,false,false };
+    boolean[] mayAdvance = { false,false,false,false,false,false,false,false,false };
+    boolean[] hasArrived = { false,false,false,false,false,false,false,false,false };
 
     public DynamicBarrier(CarDisplayI cd) {
         super(cd);
@@ -23,7 +25,7 @@ class DynamicBarrier extends Barrier {
         arrived++;
         hasArrived[no] = true;
         if(arrived >= currentThreshold) {
-            for(int i = 0; i < 9; i++) { mayAdvance[i] = hasArrived[i]; };
+            updateAdvancement();
             notifyAll();
             arrived = 0;
         }
@@ -38,12 +40,17 @@ class DynamicBarrier extends Barrier {
     @Override
     public void on() {
         active = true;
+        for (int i = 0; i < mayAdvance.length; i++) {
+            mayAdvance[i] = false;
+            hasArrived[i] = false;
+        }
     }
 
     @Override
     public synchronized void off() {
         active = false;
         arrived = 0;
+        updateAdvancement();
         notifyAll();
         released = true;
     }
@@ -54,6 +61,7 @@ class DynamicBarrier extends Barrier {
         if(k < 1 || k > 9) return;
         if(k <= currentThreshold && active) {
             if(arrived >= k){
+                updateAdvancement();
                 notifyAll();
                 arrived = 0;
             }
@@ -67,5 +75,8 @@ class DynamicBarrier extends Barrier {
             }
         }
         currentThreshold = k;
+    }
+    public void updateAdvancement(){
+        System.arraycopy(hasArrived, 0, mayAdvance, 0, 9);
     }
 }
